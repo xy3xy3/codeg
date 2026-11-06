@@ -802,6 +802,7 @@ fn supported_agents() -> Vec<AgentType> {
         AgentType::CodeBuddy,
         AgentType::KimiCode,
         AgentType::Pi,
+        AgentType::OhMyPi,
         AgentType::Grok,
         AgentType::Cursor,
         AgentType::DeepSeek,

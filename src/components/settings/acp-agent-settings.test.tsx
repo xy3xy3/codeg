@@ -2924,3 +2924,21 @@ describe("MiniMax Code native configuration", () => {
     ).toBe("KEEP=value")
   })
 })
+
+describe("Oh My Pi native configuration", () => {
+  it("does not offer generic API fields or write keys to codeg settings", () => {
+    expect(importantEnvKeysByAgent("oh_my_pi")).toEqual({
+      apiBaseUrl: [],
+      apiKey: [],
+      model: [],
+    })
+    expect(importantFieldsFor("oh_my_pi")).toEqual({
+      apiBaseUrl: false,
+      apiKey: false,
+      model: false,
+    })
+    expect(
+      patchEnvByImportantKey("oh_my_pi", "KEEP=value", "apiKey", "secret")
+    ).toBe("KEEP=value")
+  })
+})

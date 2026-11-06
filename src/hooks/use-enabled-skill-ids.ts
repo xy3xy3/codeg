@@ -8,7 +8,7 @@ import {
   scienceListAllInstallStatuses,
 } from "@/lib/api"
 import { useAcpAgents } from "@/hooks/use-acp-agents"
-import { piUsesCustomAgentDir } from "@/lib/pi-config"
+import { agentUsesCustomSkillDir } from "@/lib/agent-skill-dir"
 import type { AgentType, ExpertInstallStatus } from "@/lib/types"
 
 // Module-level cache shared across QuickActions mounts. The snapshots are
@@ -116,7 +116,7 @@ function releaseFocusRefresh(): void {
  * (or after an error, where we deliberately stay not-ready and fail open).
  *
  * `supported` is false for an agent codeg's skill store can't manage — today
- * only a pi pointed at a custom `PI_CODING_AGENT_DIR`, whose skills live in a
+ * only Pi or Oh My Pi pointed at a custom agent directory/profile, whose skills live in a
  * per-agent dir codeg's default-dir store never touches. For such an agent
  * `enabledIds` is forced empty (so no consumer can surface a default-dir link
  * as enabled) and skill UIs should hide their shortcuts rather than show a
@@ -167,12 +167,12 @@ export function useEnabledSkillIds(agentType: AgentType | null): {
     return () => releaseFocusRefresh()
   }, [])
 
-  // A pi pointed at a custom PI_CODING_AGENT_DIR isn't managed by codeg's
+  // Pi or Oh My Pi with a per-agent directory/profile override isn't managed by codeg's
   // default-dir skill store. The custom dir lives in the agent registry's
   // env_json, so pi is held unmanaged until that registry is first `fresh`
   // (pessimistic — a custom-dir pi must never expose default-dir shortcuts
   // during the initial optimistic load), then managed only when it resolves to
-  // a default-dir pi. Non-pi agents are unaffected.
+  // a default-dir pi. Other agents are unaffected.
   //
   // `fresh` is monotonic, so a mid-session dir change leaves `agents` briefly
   // stale during the reload it triggers. We let that converge within one reload
@@ -183,16 +183,16 @@ export function useEnabledSkillIds(agentType: AgentType | null): {
   // window focus (useAcpAgents reloads on focus and the consumers hide whole
   // shortcut surfaces) — a worse, recurring regression than a sub-frame window
   // whose worst case is one ignored skill badge.
-  const piSkillsUnmanaged = useMemo(() => {
-    if (agentType !== "pi") return false
+  const skillsUnmanaged = useMemo(() => {
+    if (agentType !== "pi" && agentType !== "oh_my_pi") return false
     if (!agentsFresh) return true
     const agent = agents.find((a) => a.agent_type === agentType)
-    return !agent || piUsesCustomAgentDir(agent)
+    return !agent || agentUsesCustomSkillDir(agent)
   }, [agentType, agentsFresh, agents])
 
   const enabledIds = useMemo(() => {
     const set = new Set<string>()
-    if (!snapshot || !agentType || piSkillsUnmanaged) return set
+    if (!snapshot || !agentType || skillsUnmanaged) return set
     for (const status of snapshot) {
       if (
         status.agentType === agentType &&
@@ -202,13 +202,13 @@ export function useEnabledSkillIds(agentType: AgentType | null): {
       }
     }
     return set
-  }, [snapshot, agentType, piSkillsUnmanaged])
+  }, [snapshot, agentType, skillsUnmanaged])
 
   return {
     enabledIds,
-    // An unmanaged pi is authoritatively "no managed skills", so report ready
+    // An unmanaged agent is authoritatively "no managed skills", so report ready
     // immediately instead of leaving consumers in the optimistic loading state.
-    ready: piSkillsUnmanaged || snapshot !== null,
-    supported: !piSkillsUnmanaged,
+    ready: skillsUnmanaged || snapshot !== null,
+    supported: !skillsUnmanaged,
   }
 }

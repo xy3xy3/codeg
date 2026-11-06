@@ -1484,6 +1484,12 @@
       "baseUrlInvalid": "请输入合法的 http(s) 地址。",
       "loginHint": "没有 API Key？也可以在终端运行 “codebuddy” 用腾讯云账号登录。"
     },
+    "ohMyPi": {
+      "title": "Oh My Pi 设置",
+      "description": "Codeg 通过 omp acp 直接运行 Oh My Pi，并使用其原生服务商配置。",
+      "setupHint": "请在运行 Codeg 的机器上通过 Oh My Pi 配置服务商并登录。启动其交互式命令行：",
+      "modelHint": "模型、思考级别和模式选项来自原生 ACP 会话配置。可用选项取决于安装的版本和模型。"
+    },
     "minimaxCode": {
       "title": "MiniMax Code 设置",
       "description": "codeg 复用 mcode 原生凭据与已选服务商。请在 mcode 中配置自己的 API 密钥，无需在此重复保存；已有 BYOK 配置无需额外登录。",

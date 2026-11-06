@@ -258,8 +258,8 @@ fn resolve_system_agent_installer_binary(
             // The official Windows installer ships a cmd shim, not mcode.exe.
             // PATH/PATHEXT handles it above; GUI launches also need this fallback.
             #[cfg(windows)]
-            if agent_type == AgentType::MiniMaxCode {
-                let shim = home.join(dir).join("mcode.cmd");
+            if matches!(agent_type, AgentType::MiniMaxCode | AgentType::OhMyPi) {
+                let shim = home.join(dir).join(format!("{cmd}.cmd"));
                 if shim.is_file() {
                     return Some(shim);
                 }
@@ -9298,6 +9298,7 @@ pub(crate) fn agent_system_instructions_path(agent_type: AgentType) -> Option<Pa
         AgentType::Hermes
         | AgentType::Cursor
         | AgentType::MiniMaxCode
+        | AgentType::OhMyPi
         | AgentType::OpenClaw
         | AgentType::Custom(_) => None,
     }
@@ -9928,6 +9929,13 @@ pub(crate) fn skill_storage_spec(agent_type: AgentType) -> Option<SkillStorageSp
         // CLI-owned; do not install into a different profile than the launch
         // env selects.
         AgentType::MiniMaxCode => None,
+        // OMP's own skill roots, not Pi's flat-markdown store. PI_CONFIG_DIR
+        // and profiles relocate the global root, never project ".omp".
+        AgentType::OhMyPi => Some(SkillStorageSpec {
+            kind: SkillStorageKind::SkillDirectoryOnly,
+            global_dirs: vec![crate::parsers::oh_my_pi::resolve_oh_my_pi_agent_dir().join("skills")],
+            project_rel_dirs: vec![".omp/skills"],
+        }),
         // codeg cannot detect where an arbitrary ACP agent loads skills from,
         // so custom agents are gated on the user's own declaration: that the
         // agent reads the shared `.agents/skills` store (the cross-agent
@@ -11320,10 +11328,10 @@ pub(crate) fn build_runtime_env_from_setting(
         merged.insert(key, trimmed.to_string());
     }
 
-    // MiniMax Code uses its existing native login/provider configuration.
+    // MiniMax Code and OMP use their existing native login/provider configuration.
     // Explicit env overrides remain available, but generic provider fields
     // must not synthesize OPENAI_* or invented MiniMax variables.
-    if agent_type == AgentType::MiniMaxCode {
+    if matches!(agent_type, AgentType::MiniMaxCode | AgentType::OhMyPi) {
         return merged;
     }
 
@@ -11350,13 +11358,16 @@ pub(crate) fn build_runtime_env_from_setting(
 }
 
 /// Agents that keep their own provider configuration and take no codeg model
-/// provider: MiniMax Code (its own login and providers), and OpenCode, whose
+/// provider: MiniMax Code and OMP (their own login and providers), and OpenCode, whose
 /// providers live in its config and credential store and whose `openai`
 /// integration would otherwise pick up the bound provider's key from the
 /// `OPENAI_*` env the generic binding writes. Binding one is refused, and a
 /// binding stored earlier is ignored at launch.
 fn keeps_own_providers(agent_type: AgentType) -> bool {
-    matches!(agent_type, AgentType::MiniMaxCode | AgentType::OpenCode)
+    matches!(
+        agent_type,
+        AgentType::MiniMaxCode | AgentType::OhMyPi | AgentType::OpenCode
+    )
 }
 
 /// Resolve model provider credentials into runtime env vars if `model_provider_id` is set.
@@ -11666,7 +11677,7 @@ fn cascade_update_agent_config(
             // `KIRO_API_KEY` in the agent's env) and accepts no custom base
             // URL, so it stays off the model-provider credential cascade.
         }
-        AgentType::ZCode | AgentType::MiniMaxCode => {
+        AgentType::ZCode | AgentType::MiniMaxCode | AgentType::OhMyPi => {
             // Authentication and providers belong to the official agent runtime.
         }
         AgentType::Trae => {
@@ -12678,7 +12689,7 @@ pub(crate) async fn acp_list_agents_core(db: &AppDatabase) -> Result<Vec<AcpAgen
                     }
                     env.insert(key, trimmed.to_string());
                 }
-                if agent_type != AgentType::MiniMaxCode {
+                if !matches!(agent_type, AgentType::MiniMaxCode | AgentType::OhMyPi) {
                     let (api_base_url_key, api_key_key, model_key) = agent_env_keys(agent_type);
                     if let Some(value) = trim_non_empty(local_cfg.api_base_url) {
                         env.insert(api_base_url_key.to_string(), value);
@@ -23397,6 +23408,34 @@ model = "gpt"
         assert_eq!(
             resolve_system_agent_installer_binary(AgentType::MiniMaxCode, "mcode", home.path()),
             Some(launcher)
+        );
+    }
+
+    #[test]
+    fn oh_my_pi_keeps_native_providers_and_bundle_skill_roots() {
+        let agent_dir = tempfile::tempdir().unwrap();
+        let config = serde_json::json!({
+            "apiBaseUrl": "https://unused.example", "apiKey": "unused",
+            "model": "unused",
+            "env": {"OMP_PROFILE": "work", "EXPLICIT": "value"}
+        });
+        let env =
+            build_runtime_env_from_setting(AgentType::OhMyPi, None, Some(&config.to_string()));
+        assert_eq!(env.len(), 2);
+        assert_eq!(env.get("OMP_PROFILE").map(String::as_str), Some("work"));
+        assert_eq!(env.get("EXPLICIT").map(String::as_str), Some("value"));
+        assert!(keeps_own_providers(AgentType::OhMyPi));
+        temp_env::with_vars(
+            [
+                ("OMP_PROFILE", Some(std::ffi::OsStr::new("default"))),
+                ("PI_CODING_AGENT_DIR", Some(agent_dir.path().as_os_str())),
+            ],
+            || {
+                let spec = skill_storage_spec(AgentType::OhMyPi).unwrap();
+                assert!(matches!(spec.kind, SkillStorageKind::SkillDirectoryOnly));
+                assert_eq!(spec.global_dirs, vec![agent_dir.path().join("skills")]);
+                assert_eq!(spec.project_rel_dirs, vec![".omp/skills"]);
+            },
         );
     }
 

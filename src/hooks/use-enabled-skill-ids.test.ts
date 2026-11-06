@@ -165,3 +165,39 @@ describe("useEnabledSkillIds — custom-dir pi gating", () => {
     )
   })
 })
+
+describe("useEnabledSkillIds — OMP profile gating", () => {
+  it.each([true, false])(
+    "handles custom profile: %s",
+    async (customProfile) => {
+      const { api, hook } = await setup()
+      vi.mocked(api.acpListAgents).mockResolvedValue([
+        {
+          ...piAgent(customProfile ? { OMP_PROFILE: "work" } : {}),
+          agent_type: "oh_my_pi",
+          name: "Oh My Pi",
+        },
+      ])
+      vi.mocked(api.expertsListAllInstallStatuses).mockResolvedValue([
+        {
+          ...piLinkedStatus("writer"),
+          agentType: "oh_my_pi",
+        },
+      ])
+      const { result } = renderHook(() => hook.useEnabledSkillIds("oh_my_pi"))
+      expect(result.current.supported).toBe(false)
+      await waitFor(() => expect(api.acpListAgents).toHaveBeenCalled())
+      await act(async () => {
+        await Promise.resolve()
+      })
+      await waitFor(() => expect(result.current.supported).toBe(!customProfile))
+      if (customProfile) {
+        expect(result.current.enabledIds.size).toBe(0)
+      } else {
+        await waitFor(() =>
+          expect(result.current.enabledIds.has("writer")).toBe(true)
+        )
+      }
+    }
+  )
+})

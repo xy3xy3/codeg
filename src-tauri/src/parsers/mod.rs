@@ -15,6 +15,7 @@ pub mod grok;
 pub mod hermes;
 pub mod kimi_code;
 pub mod kiro;
+pub mod oh_my_pi;
 pub mod openclaw;
 pub mod opencode;
 mod opencode_context_window;
@@ -267,6 +268,15 @@ pub fn external_transcript_sources() -> Vec<ExternalSource> {
             indexes: &[],
         },
         ExternalSource {
+            // Only transcripts: never include OMP credentials or settings.
+            agent: "oh_my_pi",
+            root: oh_my_pi::resolve_oh_my_pi_sessions_dir(),
+            is_file: false,
+            sqlite: false,
+            include_top: None,
+            indexes: &[],
+        },
+        ExternalSource {
             // DeepSeek Harness (deepseek-acp) keeps a directory-per-session
             // log store under `~/.dsh/sessions/<munged-cwd>/<uuid>/`
             // (relocatable via `DEEPSEEK_ACP_SESSIONS_ROOT` / `DSH_HOME`).
@@ -417,6 +427,7 @@ pub fn build_agent_parser(agent_type: AgentType, env: &AgentEnv) -> Box<dyn Agen
         AgentType::CodeBuddy => Box::new(codebuddy::CodeBuddyParser::for_env(env)),
         AgentType::KimiCode => Box::new(kimi_code::KimiCodeParser::for_env(env)),
         AgentType::Pi => Box::new(pi::PiParser::for_env(env)),
+        AgentType::OhMyPi => Box::new(oh_my_pi::OhMyPiParser::for_env(env)),
         AgentType::Grok => Box::new(grok::GrokParser::for_env(env)),
         AgentType::Cursor => Box::new(cursor::CursorParser::for_env(env)),
         AgentType::DeepSeek => Box::new(deepseek::DeepSeekParser::for_env(env)),

@@ -256,3 +256,20 @@ it("preserves MiniMax Code agent and session references", () => {
     meta: { agentType: "minimax_code" },
   })
 })
+
+it("preserves Oh My Pi agent and session references", () => {
+  expect(
+    parseCodegReferenceUri("codeg://agent/oh_my_pi", "@Oh My Pi")
+  ).toMatchObject({
+    refType: "agent",
+    label: "Oh My Pi",
+    meta: { agentType: "oh_my_pi" },
+  })
+  expect(
+    parseCodegReferenceUri("codeg://session/oh_my_pi_session-123", "")
+  ).toMatchObject({
+    refType: "session",
+    id: "oh_my_pi_session-123",
+    meta: { agentType: "oh_my_pi" },
+  })
+})

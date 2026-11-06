@@ -219,6 +219,7 @@ import {
   DeepSeekConfigPanel,
 } from "./deepseek-config-panel"
 import { DeepSeekModelListEditor } from "./deepseek-model-list-editor"
+import { OhMyPiConfigPanel } from "./oh-my-pi-config-panel"
 import { MiniMaxCodeConfigPanel } from "./minimax-code-config-panel"
 import { KimiCodeConfigPanel } from "./kimi-code-config-panel"
 import { PiConfigPanel } from "./pi-config-panel"
@@ -1081,6 +1082,10 @@ export function importantEnvKeysByAgent(
       apiKey: [TRAE_PAT_ENV],
       model: [],
     }
+  }
+  if (agentType === "oh_my_pi") {
+    // OMP owns provider authentication; session configOptions own model choices.
+    return { apiBaseUrl: [], apiKey: [], model: [] }
   }
   if (agentType === "minimax_code") {
     // Reuse mcode's own configuration and authentication. Do not offer
@@ -11858,6 +11863,8 @@ base_url = "https://api.openai.com/v1"`}
                   />
                 ) : selectedAgent.agent_type === "minimax_code" ? (
                   <MiniMaxCodeConfigPanel />
+                ) : selectedAgent.agent_type === "oh_my_pi" ? (
+                  <OhMyPiConfigPanel />
                 ) : selectedAgent.agent_type === "kimi_code" ? (
                   <KimiCodeConfigPanel
                     agent={selectedAgent}

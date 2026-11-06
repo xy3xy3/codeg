@@ -30,7 +30,7 @@ import {
   type GenerativeUiSkillInfo,
 } from "@/lib/api"
 import { toErrorMessage } from "@/lib/app-error"
-import { piUsesCustomAgentDir } from "@/lib/pi-config"
+import { agentUsesCustomSkillDir } from "@/lib/agent-skill-dir"
 import type { AcpAgentInfo, AgentType, ExpertLinkState } from "@/lib/types"
 
 /** The matrix groups rows by category; this pack has one. */
@@ -64,11 +64,11 @@ export function GenerativeUiBody({
       ])
       if (!current()) return
       setSkill(info)
-      // A pi pointed at a custom PI_CODING_AGENT_DIR isn't managed by the
+      // Pi/OMP with per-agent directory overrides aren't managed by the
       // default-dir skill store, so it doesn't get a column here.
       setAgents(
         agentList.filter(
-          (agent) => agent.skills_capable && !piUsesCustomAgentDir(agent)
+          (agent) => agent.skills_capable && !agentUsesCustomSkillDir(agent)
         )
       )
       setReloadKey((k) => k + 1)

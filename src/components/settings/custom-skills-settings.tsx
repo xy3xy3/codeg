@@ -73,7 +73,7 @@ import {
 import { invalidateAgentSkillsCache } from "@/hooks/use-agent-skills"
 import { useLatestCall } from "@/hooks/use-latest-call"
 import { isLocalDesktop } from "@/lib/platform"
-import { piUsesCustomAgentDir } from "@/lib/pi-config"
+import { agentUsesCustomSkillDir } from "@/lib/agent-skill-dir"
 import {
   defaultCustomSkillTemplate,
   parseYamlFrontMatter,
@@ -202,7 +202,7 @@ export function CustomSkillsBody({
       // would render a matrix column whose links can only fail.
       setAgents(
         agentList.filter(
-          (agent) => agent.skills_capable && !piUsesCustomAgentDir(agent)
+          (agent) => agent.skills_capable && !agentUsesCustomSkillDir(agent)
         )
       )
       setReloadKey((k) => k + 1)

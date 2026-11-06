@@ -604,6 +604,35 @@ const MiniMaxCodeColorIcon = memo(function MiniMaxCodeColorIcon({
   )
 })
 
+// A distinct typographic mark for Oh My Pi, rather than Pi's icon.
+const OhMyPiColorIcon = memo(function OhMyPiColorIcon({
+  size = "1em",
+}: IconProps) {
+  return (
+    <svg
+      height={size}
+      style={baseSvgStyle}
+      viewBox="0 0 24 24"
+      width={size}
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <title>Oh My Pi</title>
+      <rect width="24" height="24" rx="6" fill="#7C3AED" />
+      <text
+        x="12"
+        y="15"
+        textAnchor="middle"
+        fontSize="8"
+        fontFamily="sans-serif"
+        fontWeight="bold"
+        fill="#FFFFFF"
+      >
+        OMP
+      </text>
+    </svg>
+  )
+})
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyIcon = React.ComponentType<any>
 
@@ -614,6 +643,7 @@ const COLOR_ICONS: Partial<Record<AgentType, AnyIcon>> = {
   open_claw: OpenClawColorIcon,
   kimi_code: KimiCodeColorIcon,
   minimax_code: MiniMaxCodeColorIcon,
+  oh_my_pi: OhMyPiColorIcon,
   pi: PiColorIcon,
   deepseek: DeepSeekColorIcon,
   kiro: KiroColorIcon,

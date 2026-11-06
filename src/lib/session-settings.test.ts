@@ -368,3 +368,30 @@ it("shows a filtered current model without offering it again", () => {
     )
   ).toEqual(["relay/allowed"])
 })
+
+// OMP v18.17.0 advertises native config options, including thought_level.
+describe("Oh My Pi ACP session settings", () => {
+  it("retains model, thinking and mode config targets and opaque values", () => {
+    const settings = build([
+      select("mode", "Mode", "mode", "default", ["default", "plan"]),
+      select("model", "Model", "model", "anthropic/claude-sonnet-4-5", [
+        "anthropic/claude-sonnet-4-5",
+      ]),
+      select("thinking", "Thinking", "thought_level", "high", [
+        "off",
+        "auto",
+        "high",
+      ]),
+    ])
+    for (const id of ["mode", "model", "thinking"]) {
+      expect(
+        settings.some(
+          (setting) =>
+            setting.target.type === "config" && setting.target.configId === id
+        )
+      ).toBe(true)
+    }
+    const model = settings.find((setting) => choice(setting).isModel)
+    expect(choice(model).currentValue).toBe("anthropic/claude-sonnet-4-5")
+  })
+})

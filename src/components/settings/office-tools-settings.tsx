@@ -55,7 +55,7 @@ import type {
   OfficecliInfo,
   OfficecliSkill,
 } from "@/lib/types"
-import { piUsesCustomAgentDir } from "@/lib/pi-config"
+import { agentUsesCustomSkillDir } from "@/lib/agent-skill-dir"
 import { toErrorMessage } from "@/lib/app-error"
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -302,11 +302,11 @@ export function OfficeToolsBody({
       ])
       if (!current()) return
       setSkills(skillList)
-      // A pi pointed at a custom PI_CODING_AGENT_DIR isn't managed by the
+      // Pi/OMP with per-agent directory overrides aren't managed by the
       // default-dir skill store, so it doesn't get a column here.
       setAgents(
         agentList.filter(
-          (agent) => agent.skills_capable && !piUsesCustomAgentDir(agent)
+          (agent) => agent.skills_capable && !agentUsesCustomSkillDir(agent)
         )
       )
       // Remount the matrix so it re-fetches the authoritative status snapshot

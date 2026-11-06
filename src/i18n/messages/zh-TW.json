@@ -1484,6 +1484,12 @@
       "baseUrlInvalid": "請輸入合法的 http(s) 位址。",
       "loginHint": "沒有 API Key？也可以在終端機執行「codebuddy」用騰訊雲帳號登入。"
     },
+    "ohMyPi": {
+      "title": "Oh My Pi 設定",
+      "description": "Codeg 透過 omp acp 直接執行 Oh My Pi，並使用其原生供應商設定。",
+      "setupHint": "請在執行 Codeg 的機器上透過 Oh My Pi 設定供應商並登入。啟動其互動式命令列：",
+      "modelHint": "模型、思考層級和模式選項來自原生 ACP 工作階段設定。可用選項取決於安裝的版本和模型。"
+    },
     "minimaxCode": {
       "title": "MiniMax Code 設定",
       "description": "codeg 沿用 mcode 原生憑證與所選服務商。請在 mcode 中設定自己的 API 金鑰，不必在此重複儲存；已有 BYOK 設定無須額外登入。",

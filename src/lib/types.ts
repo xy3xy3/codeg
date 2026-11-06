@@ -10,6 +10,7 @@ export type BuiltinAgentType =
   | "code_buddy"
   | "kimi_code"
   | "minimax_code"
+  | "oh_my_pi"
   | "pi"
   | "grok"
   | "cursor"
@@ -1115,6 +1116,7 @@ export const AGENT_DISPLAY_ORDER: BuiltinAgentType[] = [
   "code_buddy",
   "kimi_code",
   "minimax_code",
+  "oh_my_pi",
   "pi",
   "grok",
   "cursor",
@@ -1154,6 +1156,7 @@ export const ALL_AGENT_TYPES: BuiltinAgentType[] = [
   "code_buddy",
   "kimi_code",
   "minimax_code",
+  "oh_my_pi",
   "pi",
   "grok",
   "cursor",
@@ -1470,6 +1473,7 @@ export const AGENT_LABELS: Record<BuiltinAgentType, string> = {
   code_buddy: "CodeBuddy",
   kimi_code: "Kimi Code",
   minimax_code: "MiniMax Code",
+  oh_my_pi: "Oh My Pi",
   pi: "Pi",
   grok: "Grok",
   cursor: "Cursor",
@@ -1493,6 +1497,7 @@ export const AGENT_COLORS: Record<BuiltinAgentType, string> = {
   code_buddy: "bg-[#0052D9]",
   kimi_code: "bg-[#1783FF]",
   minimax_code: "bg-[#F23F5D]",
+  oh_my_pi: "bg-[#7C3AED]",
   pi: "bg-[#0D9488]",
   grok: "bg-neutral-900",
   cursor: "bg-zinc-800",
@@ -4632,6 +4637,7 @@ export type McpAppType =
   | "code_buddy"
   | "kimi_code"
   | "minimax_code"
+  | "oh_my_pi"
   | "grok"
   | "cursor"
   | "deepseek"

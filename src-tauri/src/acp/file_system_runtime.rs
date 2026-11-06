@@ -940,6 +940,9 @@ fn agent_root_slots(agent_type: AgentType) -> &'static [RootSlot] {
         | AgentType::Trae
         | AgentType::CommandCode
         | AgentType::MiniMaxCode => &[],
+        // OMP persists its native configuration and transcripts in-process.
+        // Hosted tool writes keep the normal workspace/temp/explicit-root policy.
+        AgentType::OhMyPi => &[],
     }
 }
 

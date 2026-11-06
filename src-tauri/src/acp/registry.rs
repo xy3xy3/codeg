@@ -229,6 +229,57 @@ const ANTIGRAVITY_LAUNCH_ARGS: &[&str] = if cfg!(target_os = "linux") {
 /// own `/docs/cli/installation/` redirects here.
 const KIRO_INSTALL_URL: &str = "https://kiro.dev/docs/getting-started/installation/";
 
+// Official raw binaries; using a constant also gives the conditional musl
+// entries a static lifetime for the registry metadata.
+const OH_MY_PI_PLATFORMS: &[PlatformBinary] = &[
+    PlatformBinary {
+        platform: "darwin-aarch64",
+        url: "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-darwin-arm64",
+        sha256: Some("51f2836f267a8ba6c12cfb50f80e75f0301ccfb1bd53535fc6f9df03199da364"),
+    },
+    PlatformBinary {
+        platform: "darwin-x86_64",
+        url: "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-darwin-x64",
+        sha256: Some("1d953be66433df725aaf8d70e19d954fd982f67fd022c164a6cfca6d853f1d20"),
+    },
+    PlatformBinary {
+        platform: "linux-aarch64",
+        url: if cfg!(target_env = "musl") {
+            "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-linux-musl-arm64"
+        } else {
+            "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-linux-arm64"
+        },
+        sha256: Some(if cfg!(target_env = "musl") {
+            "198ddfff1f20eae97c7d0205382f85921325d1a398c46ed24a1e90cb8da0fb0d"
+        } else {
+            "a9423fd7a69d869bf514931226b21d4ff55474225f574e2911fec457fc470e68"
+        }),
+    },
+    PlatformBinary {
+        platform: "linux-x86_64",
+        url: if cfg!(target_env = "musl") {
+            "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-linux-musl-x64"
+        } else {
+            "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-linux-x64"
+        },
+        sha256: Some(if cfg!(target_env = "musl") {
+            "cf757cde59c659a2b83c7aeaee748d686d74d3d9d86146fcc35506975a4dbcf7"
+        } else {
+            "a4ce6001ab1012ca835f4184d675437531bd1ac477a7ba8424ed0b5476e9e4cb"
+        }),
+    },
+    PlatformBinary {
+        platform: "windows-aarch64",
+        url: "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-windows-arm64.exe",
+        sha256: Some("bd600af2ea9098c93fbf8541104817edb25cb3eb32267a4ac803d599bc25d521"),
+    },
+    PlatformBinary {
+        platform: "windows-x86_64",
+        url: "https://github.com/can1357/oh-my-pi/releases/download/v18.17.0/omp-windows-x64.exe",
+        sha256: Some("7cc6960d173dcb021843b3b073c2443f6544672ca98803f96f2682bebcc5acef"),
+    },
+];
+
 pub fn current_platform() -> &'static str {
     #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
     {
@@ -256,7 +307,7 @@ pub fn current_platform() -> &'static str {
     }
 }
 
-/// The twenty built-in agents. Excludes user-registered custom agents — use
+/// The twenty-one built-in agents. Excludes user-registered custom agents — use
 /// [`all_acp_agents`] for the live set.
 pub fn builtin_acp_agents() -> Vec<AgentType> {
     vec![
@@ -280,10 +331,11 @@ pub fn builtin_acp_agents() -> Vec<AgentType> {
         AgentType::Trae,
         AgentType::CommandCode,
         AgentType::MiniMaxCode,
+        AgentType::OhMyPi,
     ]
 }
 
-/// Every agent codeg can currently drive: the twenty built-ins followed by
+/// Every agent codeg can currently drive: the twenty-one built-ins followed by
 /// the user's registered custom ACP agents (sorted by id).
 pub fn all_acp_agents() -> Vec<AgentType> {
     let mut agents = builtin_acp_agents();
@@ -324,6 +376,8 @@ pub fn registry_id_for(agent_type: AgentType) -> &'static str {
         AgentType::CommandCode => "codeg-command-code",
         // Preserve pre-existing hand-registered mcode / minimax-code agents.
         AgentType::MiniMaxCode => "codeg-minimax-code",
+        // Keep existing custom:omp registrations and their caches intact.
+        AgentType::OhMyPi => "codeg-oh-my-pi",
         // A custom agent's registry id IS its identity.
         AgentType::Custom(id) => id,
     }
@@ -351,6 +405,7 @@ pub fn from_registry_id(id: &str) -> Option<AgentType> {
         "codeg-trae-cli" => Some(AgentType::Trae),
         "codeg-command-code" => Some(AgentType::CommandCode),
         "codeg-minimax-code" => Some(AgentType::MiniMaxCode),
+        "codeg-oh-my-pi" => Some(AgentType::OhMyPi),
         // Only ids the user has actually registered resolve. An unregistered
         // id must stay `None` so the ACP-registry picker still offers it as
         // "addable" rather than treating it as already supported.
@@ -441,6 +496,10 @@ pub fn acp_adapter_relation(agent_type: AgentType) -> Option<AcpAdapterRelation>
 pub fn binary_system_dirs(agent_type: AgentType) -> &'static [&'static str] {
     match agent_type {
         AgentType::OpenCode => &[".opencode/bin"],
+        #[cfg(not(windows))]
+        AgentType::OhMyPi => &[".bun/bin"],
+        #[cfg(windows)]
+        AgentType::OhMyPi => &[".bun/bin", "AppData/Local/omp"],
         #[cfg(not(windows))]
         AgentType::MiniMaxCode => &[".minimax-code/bin"],
         #[cfg(windows)]
@@ -7153,6 +7212,23 @@ pub fn get_agent_meta(agent_type: AgentType) -> AcpAgentMeta {
                 node_required: Some("22.0.0"),
             },
         },
+        AgentType::OhMyPi => AcpAgentMeta {
+            agent_type,
+            supports_mcp: true,
+            name: "Oh My Pi",
+            description: "Oh My Pi coding agent with native ACP support",
+            // Official self-contained executables bundle Bun. Do not launch the
+            // Bun-only npm package through npx or wrap omp with pi-acp.
+            // Digests come from the v18.17.0 release's published SHA-256 values.
+            distribution: AgentDistribution::Binary {
+                version: "18.17.0",
+                cmd: "omp",
+                args: &["acp"],
+                env: &[],
+                platforms: OH_MY_PI_PLATFORMS,
+                dir_entry: None,
+            },
+        },
         AgentType::MiniMaxCode => AcpAgentMeta {
             agent_type,
             supports_mcp: true,
@@ -7454,6 +7530,41 @@ mod tests {
     // up, so there is no pin, the launch is the user's `traecli acp serve`,
     // and Upgrade runs the CLI's own `traecli update`. Its registry id must
     // stay clear of every id a hand-registered custom TRAE entry could carry.
+    #[test]
+    fn oh_my_pi_pins_native_acp_binaries_without_bypassing_permissions() {
+        let meta = get_agent_meta(AgentType::OhMyPi);
+        assert!(meta.supports_mcp);
+        assert_eq!(registry_id_for(AgentType::OhMyPi), "codeg-oh-my-pi");
+        assert_eq!(from_registry_id("codeg-oh-my-pi"), Some(AgentType::OhMyPi));
+        assert!(acp_adapter_relation(AgentType::OhMyPi).is_none());
+        assert!(meta.supports_custom_version());
+        let AgentDistribution::Binary {
+            version,
+            cmd,
+            args,
+            env,
+            platforms,
+            dir_entry,
+        } = meta.distribution
+        else {
+            panic!("OMP must use its self-contained binary");
+        };
+        assert_eq!(version, "18.17.0");
+        assert_eq!(cmd, "omp");
+        assert_eq!(args, &["acp"]);
+        assert!(env.is_empty());
+        assert!(dir_entry.is_none());
+        assert_eq!(platforms.len(), 6);
+        for platform in platforms {
+            assert!(platform
+                .url
+                .contains("/can1357/oh-my-pi/releases/download/v18.17.0/omp-"));
+            let digest = platform.sha256.expect("pinned official release digest");
+            assert_eq!(digest.len(), 64);
+            assert!(digest.bytes().all(|byte| byte.is_ascii_hexdigit()));
+        }
+    }
+
     #[test]
     fn minimax_code_launches_native_acp_without_overriding_configuration() {
         let meta = get_agent_meta(AgentType::MiniMaxCode);

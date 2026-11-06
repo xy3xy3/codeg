@@ -1484,6 +1484,12 @@
       "baseUrlInvalid": "유효한 http(s) URL을 입력하세요.",
       "loginHint": "API 키가 없나요? 터미널에서 ‘codebuddy’를 실행하여 Tencent 계정으로 로그인할 수도 있습니다."
     },
+    "ohMyPi": {
+      "title": "Oh My Pi 설정",
+      "description": "Codeg는 omp acp로 Oh My Pi를 직접 실행하고 기본 공급자 설정을 재사용합니다.",
+      "setupHint": "Codeg를 실행하는 컴퓨터에서 Oh My Pi로 공급자를 설정하고 로그인하세요. 대화형 CLI를 시작하세요:",
+      "modelHint": "모델, 사고 수준 및 모드 옵션은 기본 ACP 세션 설정에서 제공됩니다. 사용 가능한 옵션은 설치된 버전과 모델에 따라 다릅니다."
+    },
     "minimaxCode": {
       "title": "MiniMax Code 설정",
       "description": "codeg는 mcode의 기본 인증 정보와 선택한 공급자를 재사용합니다. API 키는 여기가 아닌 mcode에서 설정하세요. 기존 BYOK 설정에는 별도 로그인이 필요하지 않습니다.",

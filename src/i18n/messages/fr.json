@@ -1484,6 +1484,12 @@
       "baseUrlInvalid": "Saisissez une URL http(s) valide.",
       "loginHint": "Pas de clé API ? Exécutez « codebuddy » dans un terminal pour vous connecter avec votre compte Tencent."
     },
+    "ohMyPi": {
+      "title": "Configuration de Oh My Pi",
+      "description": "Codeg lance directement Oh My Pi avec omp acp et réutilise sa configuration native des fournisseurs.",
+      "setupHint": "Configurez les fournisseurs et connectez-vous via Oh My Pi sur la machine exécutant Codeg. Lancez son interface interactive :",
+      "modelHint": "Les modèles, niveaux de réflexion et modes proviennent de la configuration native de session ACP. Les choix dépendent de la version installée et du modèle."
+    },
     "minimaxCode": {
       "title": "Configuration de MiniMax Code",
       "description": "codeg réutilise les identifiants natifs et le fournisseur sélectionné de mcode. Configurez votre clé API dans mcode, pas ici. Une configuration BYOK existante ne nécessite pas de connexion supplémentaire.",

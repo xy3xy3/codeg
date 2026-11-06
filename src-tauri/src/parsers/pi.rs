@@ -329,6 +329,7 @@ fn session_dir_from_settings(agent_dir: &Path, home_dir: Option<&Path>) -> Optio
 /// Unknown / malformed lines are skipped (`continue`) so a forward-compatible or
 /// partially-written log is read robustly rather than panicking.
 pub struct PiParser {
+    agent_type: AgentType,
     base_dir: PathBuf,
     /// Where `models.json` lives. Resolved separately from `base_dir` because a
     /// custom `sessionDir` moves the sessions OUT of the agent dir, so the one
@@ -344,6 +345,7 @@ impl PiParser {
     /// The history of the pi launched with `env`.
     pub fn for_env(env: &AgentEnv) -> Self {
         Self {
+            agent_type: AgentType::Pi,
             base_dir: resolve_pi_sessions_dir_for_env(env),
             agent_dir: resolve_pi_agent_dir_for_env(env),
         }
@@ -359,14 +361,24 @@ impl PiParser {
             .parent()
             .map(Path::to_path_buf)
             .unwrap_or_else(|| base_dir.clone());
+        Self::with_identity(base_dir, agent_dir, AgentType::Pi)
+    }
+
+    /// Share the JSONL tree reader without sharing agent identity or configuration.
+    pub(crate) fn with_identity(
+        base_dir: PathBuf,
+        agent_dir: PathBuf,
+        agent_type: AgentType,
+    ) -> Self {
         Self {
             base_dir,
             agent_dir,
+            agent_type,
         }
     }
 
     fn parse_summary(&self, path: &Path) -> Option<ConversationSummary> {
-        let parsed = parse_session(path);
+        let parsed = parse_session_for_agent(path, self.agent_type);
         // A file with no header AND no content events is treated as empty.
         let started_at = parsed.first_ts?;
         if parsed.content_events == 0 {
@@ -378,7 +390,7 @@ impl PiParser {
 
         Some(ConversationSummary {
             id,
-            agent_type: AgentType::Pi,
+            agent_type: self.agent_type,
             folder_path: parsed.cwd,
             folder_name,
             title: resolve_title(parsed.session_name, parsed.first_user_text),
@@ -398,7 +410,7 @@ impl PiParser {
         path: &Path,
         conversation_id: &str,
     ) -> Result<ConversationDetail, ParseError> {
-        let parsed = parse_session(path);
+        let parsed = parse_session_for_agent(path, self.agent_type);
 
         let mut turns = group_into_turns(parsed.messages);
         relocate_orphaned_tool_results(&mut turns);
@@ -410,19 +422,23 @@ impl PiParser {
         // Ask Pi what the provider declared first; only then guess by name.
         // Self-hosted model ids are absent from the built-in table, so guessing
         // alone drops the context meter entirely.
-        let max_tokens = pi_declared_context_window(
-            &self.agent_dir,
-            parsed.provider.as_deref(),
-            parsed.model.as_deref(),
-        )
-        .or_else(|| infer_context_window_max_tokens(parsed.model.as_deref()));
+        let max_tokens = (self.agent_type == AgentType::Pi)
+            .then(|| {
+                pi_declared_context_window(
+                    &self.agent_dir,
+                    parsed.provider.as_deref(),
+                    parsed.model.as_deref(),
+                )
+            })
+            .flatten()
+            .or_else(|| infer_context_window_max_tokens(parsed.model.as_deref()));
         let session_stats =
             merge_context_window_stats(compute_session_stats(&turns), used_tokens, max_tokens);
 
         let folder_name = parsed.cwd.as_deref().map(folder_name_from_path);
         let summary = ConversationSummary {
             id: conversation_id.to_string(),
-            agent_type: AgentType::Pi,
+            agent_type: self.agent_type,
             folder_path: parsed.cwd,
             folder_name,
             title: resolve_title(parsed.session_name, parsed.first_user_text),
@@ -467,7 +483,7 @@ impl AgentParser for PiParser {
                 continue;
             }
             if let Ok(Some(summary)) =
-                super::summary_cache::get_or_parse(AgentType::Pi, path, || {
+                super::summary_cache::get_or_parse(self.agent_type, path, || {
                     Ok(self.parse_summary(path))
                 })
             {
@@ -556,7 +572,7 @@ struct SessionRecord {
 /// `UnifiedMessage`s plus session metadata, covering only the ACTIVE branch (see
 /// the type docs). Unknown / malformed lines are skipped so a forward-compatible
 /// or partially-written log never panics.
-fn parse_session(path: &Path) -> SessionParse {
+fn parse_session_for_agent(path: &Path, agent_type: AgentType) -> SessionParse {
     let mut sp = SessionParse::default();
     let Ok(file) = fs::File::open(path) else {
         return sp;
@@ -566,6 +582,7 @@ fn parse_session(path: &Path) -> SessionParse {
     // mirrors pi's `_buildIndex`, which skips EVERY `type:"session"` record (not
     // just the first), so a header can never be picked as the leaf.
     let mut header: Option<Value> = None;
+    let mut title_slot: Option<Option<String>> = None;
     let mut entries: Vec<SessionRecord> = Vec::new();
     for (line_idx, line) in BufReader::new(file).lines().enumerate() {
         let Ok(line) = line else { continue };
@@ -581,6 +598,12 @@ fn parse_session(path: &Path) -> SessionParse {
             }
             continue;
         }
+        if agent_type == AgentType::OhMyPi
+            && value.get("type").and_then(Value::as_str) == Some("title")
+        {
+            title_slot = Some(string_field(&value, "title"));
+            continue;
+        }
         entries.push(SessionRecord { value, line_idx });
     }
 
@@ -590,11 +613,23 @@ fn parse_session(path: &Path) -> SessionParse {
         sp.cwd = string_field(header, "cwd");
         note_ts(&mut sp, record_iso_ts(header));
     }
-    sp.session_name = session_name(&entries);
+    sp.session_name = if agent_type == AgentType::OhMyPi {
+        title_slot.unwrap_or_else(|| {
+            header
+                .as_ref()
+                .and_then(|header| string_field(header, "title"))
+        })
+    } else {
+        session_name(&entries)
+    };
 
     // Pass 2 — replay the active branch in file order (which IS path order:
     // every entry on the path was appended after its parent).
-    let active = active_branch(&entries);
+    let active = if agent_type == AgentType::OhMyPi {
+        omp_active_branch(&entries)
+    } else {
+        active_branch(&entries)
+    };
     for (index, record) in entries.iter().enumerate() {
         if !keeps_record(active.as_ref(), index, record) {
             continue;
@@ -608,7 +643,24 @@ fn parse_session(path: &Path) -> SessionParse {
             // `session_info` is resolved up front over ALL entries — see
             // `session_name` — not here, where the branch filter would hide it.
             "model_change" => {
-                if let Some(model) = string_field(value, "modelId") {
+                if agent_type == AgentType::OhMyPi {
+                    // OMP stores separate model selections for helper roles.
+                    // Only the default role describes the main conversation.
+                    if value
+                        .get("role")
+                        .and_then(Value::as_str)
+                        .is_some_and(|role| role != "default")
+                    {
+                        continue;
+                    }
+                    if let Some(model) = string_field(value, "model") {
+                        let (provider, model) = model
+                            .split_once('/')
+                            .map_or((None, model.as_str()), |(p, m)| (Some(p.to_owned()), m));
+                        sp.model = Some(model.to_owned());
+                        sp.provider = provider;
+                    }
+                } else if let Some(model) = string_field(value, "modelId") {
                     sp.model = Some(model);
                     sp.provider = string_field(value, "provider");
                 }
@@ -711,6 +763,41 @@ fn active_branch(entries: &[SessionRecord]) -> Option<HashSet<usize>> {
         return Some(on_path);
     }
     has_fork(entries, &by_id).then_some(on_path)
+}
+
+/// OMP can append off-branch background entries without changing the active
+/// leaf. Mirror session-entries.ts resolveSessionLeafId, including explicit
+/// null and stale leaf references. Unlike Pi, an explicit leaf is authoritative.
+fn omp_active_branch(entries: &[SessionRecord]) -> Option<HashSet<usize>> {
+    let by_id: HashMap<&str, usize> = entries
+        .iter()
+        .enumerate()
+        .filter_map(|(i, r)| entry_id(&r.value).map(|id| (id, i)))
+        .collect();
+    if by_id.is_empty() {
+        return None;
+    }
+    let last = entries.last()?;
+    let selected = match last.value.get("activeLeafId") {
+        Some(Value::Null) => return Some(HashSet::new()),
+        Some(Value::String(id)) if by_id.contains_key(id.as_str()) => Some(id.as_str()),
+        Some(_) => entries.iter().rev().find_map(|r| {
+            let id = entry_id(&r.value)?;
+            (r.value.get("activeLeafId").is_none()
+                || r.value.get("activeLeafId").and_then(Value::as_str) == Some(id))
+            .then_some(id)
+        }),
+        None => entry_id(&last.value),
+    };
+    let mut current = selected.and_then(|id| by_id.get(id).copied());
+    let mut on_path = HashSet::new();
+    while let Some(index) = current {
+        if !on_path.insert(index) {
+            break;
+        }
+        current = parent_index(&entries[index].value, &by_id);
+    }
+    Some(on_path)
 }
 
 /// What an entry hangs off, for fork counting.
@@ -1393,6 +1480,10 @@ fn session_id_of(path: &Path) -> Option<String> {
             {
                 return Some(id.to_string());
             }
+        }
+        // OMP reserves a fixed-width title slot before its v3 session header.
+        if value.get("type").and_then(Value::as_str) == Some("title") {
+            continue;
         }
         // The header is line 1; stop after the first non-empty record so a
         // headerless file falls back to the filename uuid rather than scanning.

@@ -8,7 +8,7 @@ pub const CUSTOM_AGENT_WIRE_PREFIX: &str = "custom:";
 
 /// Which agent backs a conversation.
 ///
-/// The twenty named variants are compile-time built-ins with hand-written
+/// The twenty-one named variants are compile-time built-ins with hand-written
 /// launch metadata (`acp::registry`). Most use a dedicated transcript parser;
 /// ZCode, TRAE CLI, Command Code and MiniMax Code use the Codeg-owned ACP transcript.
 /// [`AgentType::Custom`] is the open end: a user-registered
@@ -42,12 +42,13 @@ pub enum AgentType {
     Trae,
     CommandCode,
     MiniMaxCode,
+    OhMyPi,
     /// A user-registered ACP agent, identified by its ACP-registry id
     /// (interned). Ordered last so built-ins keep their relative order.
     Custom(&'static str),
 }
 
-/// The twenty compile-time agents, in declaration order. Does NOT include
+/// The twenty-one compile-time agents, in declaration order. Does NOT include
 /// custom agents — use [`crate::acp::registry::all_acp_agents`] for the live
 /// set that includes them.
 pub const BUILTIN_AGENT_TYPES: &[AgentType] = &[
@@ -71,6 +72,7 @@ pub const BUILTIN_AGENT_TYPES: &[AgentType] = &[
     AgentType::Trae,
     AgentType::CommandCode,
     AgentType::MiniMaxCode,
+    AgentType::OhMyPi,
 ];
 
 impl AgentType {
@@ -135,6 +137,7 @@ impl AgentType {
             AgentType::Trae => Cow::Borrowed("trae"),
             AgentType::CommandCode => Cow::Borrowed("command_code"),
             AgentType::MiniMaxCode => Cow::Borrowed("minimax_code"),
+            AgentType::OhMyPi => Cow::Borrowed("oh_my_pi"),
             AgentType::Custom(id) => Cow::Owned(format!("{CUSTOM_AGENT_WIRE_PREFIX}{id}")),
         }
     }
@@ -163,6 +166,7 @@ impl AgentType {
             "trae" => Some(AgentType::Trae),
             "command_code" => Some(AgentType::CommandCode),
             "minimax_code" => Some(AgentType::MiniMaxCode),
+            "oh_my_pi" => Some(AgentType::OhMyPi),
             other => other
                 .strip_prefix(CUSTOM_AGENT_WIRE_PREFIX)
                 .and_then(AgentType::custom),
@@ -255,6 +259,7 @@ impl fmt::Display for AgentType {
             AgentType::Trae => write!(f, "TRAE CLI"),
             AgentType::CommandCode => write!(f, "Command Code"),
             AgentType::MiniMaxCode => write!(f, "MiniMax Code"),
+            AgentType::OhMyPi => write!(f, "Oh My Pi"),
             // Prefer the registered display name; fall back to the raw id when
             // the registry has not been hydrated (or the agent was deleted
             // while conversations still reference it).
@@ -295,6 +300,7 @@ mod tests {
             (AgentType::Trae, "trae"),
             (AgentType::CommandCode, "command_code"),
             (AgentType::MiniMaxCode, "minimax_code"),
+            (AgentType::OhMyPi, "oh_my_pi"),
         ];
         for (agent, wire) in expected {
             assert_eq!(agent.as_wire(), wire);
@@ -414,6 +420,17 @@ mod tests {
             let custom = AgentType::custom(id).expect("previously valid custom id");
             assert_eq!(AgentType::from_wire(&format!("custom:{id}")), Some(custom));
             assert_ne!(custom, AgentType::MiniMaxCode);
+        }
+    }
+
+    #[test]
+    fn oh_my_pi_preserves_existing_custom_agents() {
+        assert_eq!(AgentType::OhMyPi.to_string(), "Oh My Pi");
+        assert!(!AgentType::OhMyPi.uses_acp_transcript());
+        for id in ["omp", "oh-my-pi", "oh_my_pi"] {
+            let custom = AgentType::custom(id).expect("previously valid custom id");
+            assert_eq!(AgentType::from_wire(&format!("custom:{id}")), Some(custom));
+            assert_ne!(custom, AgentType::OhMyPi);
         }
     }
 

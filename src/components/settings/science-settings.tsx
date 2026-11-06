@@ -17,7 +17,7 @@ import {
 } from "@/lib/api"
 import { invalidateAgentSkillsCache } from "@/hooks/use-agent-skills"
 import { useLatestCall } from "@/hooks/use-latest-call"
-import { piUsesCustomAgentDir } from "@/lib/pi-config"
+import { agentUsesCustomSkillDir } from "@/lib/agent-skill-dir"
 import type {
   AcpAgentInfo,
   ExpertLinkState,
@@ -64,11 +64,11 @@ export function ScienceBody({
       ])
       if (!current()) return
       setSkills(skillList)
-      // A pi pointed at a custom PI_CODING_AGENT_DIR isn't managed by the
+      // Pi/OMP with per-agent directory overrides aren't managed by the
       // default-dir skill store, so it doesn't get a column here.
       setAgents(
         agentList.filter(
-          (agent) => agent.skills_capable && !piUsesCustomAgentDir(agent)
+          (agent) => agent.skills_capable && !agentUsesCustomSkillDir(agent)
         )
       )
       setReloadKey((k) => k + 1)

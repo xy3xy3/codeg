@@ -1484,6 +1484,12 @@
       "baseUrlInvalid": "有効な http(s) URL を入力してください。",
       "loginHint": "API キーがない場合は、ターミナルで「codebuddy」を実行して Tencent アカウントでサインインすることもできます。"
     },
+    "ohMyPi": {
+      "title": "Oh My Pi の設定",
+      "description": "Codeg は omp acp で Oh My Pi を直接実行し、ネイティブのプロバイダー設定を再利用します。",
+      "setupHint": "Codeg を実行するマシンで Oh My Pi のプロバイダーを設定してログインしてください。対話型 CLI を起動します：",
+      "modelHint": "モデル、思考レベル、モードの選択肢はネイティブ ACP セッション設定から取得します。利用可能な選択肢はインストール済みのバージョンとモデルに依存します。"
+    },
     "minimaxCode": {
       "title": "MiniMax Code の設定",
       "description": "codeg は mcode の認証情報と選択済みプロバイダーを再利用します。API キーはここではなく mcode で設定してください。既存の BYOK 設定では追加のログインは不要です。",
